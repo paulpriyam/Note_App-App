@@ -9,6 +9,7 @@ import com.samarth.ktornoteapp.utils.SessionManager
 import com.samarth.ktornoteapp.utils.isNetworkConnected
 import javax.inject.Inject
 import com.samarth.ktornoteapp.utils.Result
+import kotlinx.coroutines.flow.Flow
 
 class NoteRepoImpl @Inject constructor(
     val noteApi: NotesApi,
@@ -43,6 +44,7 @@ class NoteRepoImpl @Inject constructor(
             val result = noteApi.login(user)
             if (result.success) {
                 sessionManager.updateSession(result.message, user.name ?: "", user.email)
+                getAllNotesFromServer()
                 Result.Success("Logged In Successfully!")
             } else {
                 Result.Error<String>(result.message)
@@ -78,11 +80,11 @@ class NoteRepoImpl @Inject constructor(
     }
 
     override suspend fun createNote(note: LocalNote): Result<String> {
-        return try {
+        try {
             notesDao.insertNote(note)
             val token = sessionManager.getJwtToken()
             if (token == null) {
-                Result.Success("User is not logged in")
+                return Result.Error("User is not logged in")
             }
             val remoteNote = RemoteNotes(
                 noteTitle = note.noteTitle,
@@ -96,23 +98,26 @@ class NoteRepoImpl @Inject constructor(
             )
             if (res.success) {
                 notesDao.insertNote(note.apply { connected = true })
-                Result.Success("Note added successfully")
+                return Result.Success("Note added successfully")
             } else {
-                Result.Error(res.message)
+                return Result.Error(res.message)
             }
 
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.Error(e.message ?: "Some error occurred")
+            return Result.Error(e.message ?: "Some error occurred")
         }
     }
 
     override suspend fun updateNote(note: LocalNote): Result<String> {
-        return try {
+        try {
             notesDao.insertNote(note)
             val token = sessionManager.getJwtToken()
-            if(token == null){
-                Result.Success("Note is Updated in Local Database!")
+            if (token == null) {
+                return Result.Success("Note is Updated in Local Database!")
+            }
+            if (!isNetworkConnected(sessionManager.context)) {
+                return Result.Error("Netwotk is not connect")
             }
 
             val result = noteApi.updateNote(
@@ -125,15 +130,41 @@ class NoteRepoImpl @Inject constructor(
                 )
             )
 
-            if(result.success){
+            if (result.success) {
                 notesDao.insertNote(note.also { it.connected = true })
-                Result.Success("Note Updated Successfully!")
+                return Result.Success("Note Updated Successfully!")
             } else {
-                Result.Error(result.message)
+                return Result.Error(result.message)
             }
-        } catch (e:Exception){
+        } catch (e: Exception) {
             e.printStackTrace()
-            Result.Error(e.message ?: "Some Problem Occurred!")
+            return Result.Error(e.message ?: "Some Problem Occurred!")
         }
+    }
+
+    override fun getAllNotes(): Flow<List<LocalNote>> = notesDao.getAllNotesOrderedByDate()
+
+    override suspend fun getAllNotesFromServer() {
+        try {
+            val token = sessionManager.getJwtToken() ?: return
+            if (!isNetworkConnected(sessionManager.context)) {
+                return
+            }
+            val result = noteApi.getAllNote("Bearer $token")
+            result.forEach { remoteNote ->
+                notesDao.insertNote(
+                    LocalNote(
+                        noteTitle = remoteNote.noteTitle,
+                        description = remoteNote.description,
+                        date = remoteNote.date,
+                        connected = true,
+                        noteId = remoteNote.noteId
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
     }
 }
