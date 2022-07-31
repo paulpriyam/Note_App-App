@@ -13,15 +13,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NoteViewModel @Inject constructor(
-    val noteRepo:NoteRepo
-):ViewModel() {
+    val noteRepo: NoteRepo
+) : ViewModel() {
     val notes = noteRepo.getAllNotes()
     var oldNote: LocalNote? = null
 
     fun createNote(
-        noteTitle:String?,
-        description:String?
-    ) = viewModelScope.launch(Dispatchers.IO){
+        noteTitle: String?,
+        description: String?
+    ) = viewModelScope.launch(Dispatchers.IO) {
         val localNote = LocalNote(
             noteTitle = noteTitle,
             description = description
@@ -31,11 +31,11 @@ class NoteViewModel @Inject constructor(
 
 
     fun updateNote(
-        noteTitle:String?,
-        description:String?
+        noteTitle: String?,
+        description: String?
     ) = viewModelScope.launch(Dispatchers.IO) {
 
-        if(noteTitle == oldNote?.noteTitle && description == oldNote?.description && oldNote?.connected == true){
+        if (noteTitle == oldNote?.noteTitle && description == oldNote?.description && oldNote?.connected == true) {
             return@launch
         }
 
@@ -47,8 +47,18 @@ class NoteViewModel @Inject constructor(
         noteRepo.updateNote(note)
     }
 
+    fun deleteNote(noteId: String) = viewModelScope.launch {
+        noteRepo.deleteNote(noteId)
+    }
 
-    fun milliToDate(time:Long):String {
+    fun undoDelete(
+        note: LocalNote
+    ) = viewModelScope.launch {
+        noteRepo.createNote(note)
+    }
+
+
+    fun milliToDate(time: Long): String {
         val date = Date(time)
         val simpleDateFormat = SimpleDateFormat("hh:mm a | MMM d, yyyy", Locale.getDefault())
         return simpleDateFormat.format(date)

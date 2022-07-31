@@ -167,4 +167,30 @@ class NoteRepoImpl @Inject constructor(
         }
 
     }
+
+    override suspend fun deleteNote(noteId: String) {
+
+        try {
+
+            notesDao.deleteNoteLocally(noteId)
+            val token = sessionManager.getJwtToken() ?: kotlin.run {
+                notesDao.deleteNote(noteId)
+                return
+            }
+            if (!isNetworkConnected(sessionManager.context)) {
+                return
+            }
+
+            val response = noteApi.deleteNote(
+                "Bearer $token",
+                noteId
+            )
+
+            if(response.success){
+                notesDao.deleteNote(noteId)
+            }
+        }catch (e:Exception){
+            e.printStackTrace()
+        }
+    }
 }
