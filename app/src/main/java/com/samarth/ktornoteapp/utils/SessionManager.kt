@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.samarth.ktornoteapp.utils.Constants.EMAIL_KEY
 import com.samarth.ktornoteapp.utils.Constants.JWT_TOKEN
+import com.samarth.ktornoteapp.utils.Constants.NAME_KEY
 import kotlinx.coroutines.flow.first
 
 class SessionManager(val context: Context) {
@@ -14,16 +16,39 @@ class SessionManager(val context: Context) {
 
     private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("session_manager")
 
-    suspend fun saveToken(token: String) {
+    suspend fun updateSession(token: String,email:String,name:String) {
         val jwtTokenKey = stringPreferencesKey(JWT_TOKEN)
+        val emailKey= stringPreferencesKey(EMAIL_KEY)
+        val nameKey= stringPreferencesKey(NAME_KEY)
         context.dataStore.edit {
             it[jwtTokenKey] = token
+            it[emailKey]=email
+            it[nameKey]=name
         }
     }
 
-    suspend fun getToekn(): String? {
+    suspend fun getJwtToken(): String? {
         val jwtTokenKey = stringPreferencesKey(JWT_TOKEN)
         val preferences = context.dataStore.data.first()
         return preferences[jwtTokenKey]
     }
+
+    suspend fun getCurrentUserName():String? {
+        val nameKey = stringPreferencesKey(NAME_KEY)
+        val preferences = context.dataStore.data.first()
+        return preferences[nameKey]
+    }
+
+    suspend fun getCurrentUserEmail():String? {
+        val emailKey = stringPreferencesKey(EMAIL_KEY)
+        val preferences = context.dataStore.data.first()
+        return preferences[emailKey]
+    }
+
+    suspend fun logout(){
+        context.dataStore.edit {
+            it.clear()
+        }
+    }
+
 }

@@ -5,7 +5,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.google.gson.Gson
 import com.samarth.ktornoteapp.data.local.NoteDatabase
+import com.samarth.ktornoteapp.data.local.dao.NotesDao
 import com.samarth.ktornoteapp.data.remote.models.NotesApi
+import com.samarth.ktornoteapp.repository.NoteRepo
+import com.samarth.ktornoteapp.repository.NoteRepoImpl
 import com.samarth.ktornoteapp.utils.Constants.BASE_URL
 import com.samarth.ktornoteapp.utils.SessionManager
 import dagger.Module
@@ -64,5 +67,19 @@ object AppModule {
             .build()
             .create(NotesApi::class.java)
 
+    }
+
+    @Singleton
+    @Provides
+    fun providesNoteRepo(
+        noteApi: NotesApi,
+        notesDao: NotesDao,
+        sessionManager: SessionManager
+    ): NoteRepo {
+        return NoteRepoImpl(
+            noteApi,
+            notesDao,
+            sessionManager
+        )
     }
 }
